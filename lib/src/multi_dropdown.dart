@@ -90,6 +90,7 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.fieldDecoration = const FieldDecoration(),
     this.dropdownDecoration = const DropdownDecoration(),
     this.searchDecoration = const SearchFieldDecoration(),
+    this.searchAutofocus = true,
     this.dropdownItemDecoration = const DropdownItemDecoration(),
     this.autovalidateMode = AutovalidateMode.disabled,
     this.singleSelect = false,
@@ -138,6 +139,7 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.fieldDecoration = const FieldDecoration(),
     this.dropdownDecoration = const DropdownDecoration(),
     this.searchDecoration = const SearchFieldDecoration(),
+    this.searchAutofocus = true,
     this.dropdownItemDecoration = const DropdownItemDecoration(),
     this.autovalidateMode = AutovalidateMode.disabled,
     this.singleSelect = false,
@@ -175,6 +177,9 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
 
   /// The decoration of the search field.
   final SearchFieldDecoration searchDecoration;
+
+  /// Whether the search field is autofocused (default true)
+  final bool searchAutofocus;
 
   /// The decoration of the dropdown items.
   final DropdownItemDecoration dropdownItemDecoration;
@@ -436,6 +441,7 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
                       itemBuilder: widget.itemBuilder,
                       itemSeparator: widget.itemSeparator,
                       searchDecoration: widget.searchDecoration,
+                      searchAutofocus: widget.searchAutofocus,
                       maxSelections: widget.maxSelections,
                       singleSelect: widget.singleSelect,
                       onSearchChange: _dropdownController._setSearchQuery,
