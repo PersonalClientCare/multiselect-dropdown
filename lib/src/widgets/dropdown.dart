@@ -544,7 +544,7 @@ class _SearchFieldState extends State<_SearchField> {
           prefixIcon: widget.decoration.searchIcon,
           suffixIcon: widget.decoration.showClearIcon && _hasText
               ? Tooltip(
-                  message: 'Clear search',
+                  message: widget.decoration.clearTooltipText ?? 'Clear search',
                   child: IconButton(
                     icon: const Icon(Icons.clear, size: 18),
                     onPressed: () {

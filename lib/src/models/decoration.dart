@@ -26,6 +26,8 @@ class SearchFieldDecoration {
   ///
   /// [showClearIcon] is whether to show a clear icon in the search field. The default value is true.
   ///
+  /// [clearTooltipText] is an optional override for the clear icon tooltip.
+  ///
   /// [autofocus] is whether the search field should be focused when the dropdown is opened. The default value is false.
   ///
   /// [searchDebounceMs] is the debounce duration in milliseconds for search input. The default value is 0 (no debounce).
@@ -47,6 +49,7 @@ class SearchFieldDecoration {
     this.filled,
     this.cursorColor,
     this.showClearIcon = true,
+    this.clearTooltipText,
     this.autofocus = false,
     this.searchDebounceMs = 0,
   });
@@ -83,6 +86,9 @@ class SearchFieldDecoration {
 
   /// Whether to show a clear icon in the search field when text is entered.
   final bool showClearIcon;
+
+  /// The text to display when no items are found.
+  final String? clearTooltipText;
 
   /// Whether the search field should be automatically focused when the dropdown is opened.
   final bool autofocus;
