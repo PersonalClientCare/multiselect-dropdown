@@ -1,7 +1,9 @@
 name: multi_dropdown
 description: "Streamlined Flutter widget for versatile multi-selection with extensive customization."
 version: 3.2.1
-homepage: "https://github.com/oi-narendra/multiselect-dropdown"
+homepage: "https://github.com/PersonalClientCare/multiselect-dropdown"
+
+publish_to: none
 
 environment:
   sdk: ">=2.17.0 <4.0.0"
