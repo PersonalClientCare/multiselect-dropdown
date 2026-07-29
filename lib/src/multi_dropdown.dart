@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' if (dart.library.io) 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ part 'controllers/future_controller.dart';
 part 'controllers/multiselect_controller.dart';
 part 'enum/enums.dart';
 part 'models/decoration.dart';
+part 'models/dropdown_group.dart';
 part 'models/dropdown_item.dart';
 part 'widgets/dropdown.dart';
 
@@ -25,6 +27,24 @@ typedef OnSelectionChanged<T> = void Function(List<T> selectedItems);
 
 /// typedef for the callback when the search field value changes.
 typedef OnSearchChanged = ValueChanged<String>;
+
+/// Typedef for a custom search filter function.
+///
+/// Takes the search [query] and the full list of [items], and returns
+/// the filtered list that should be displayed.
+///
+/// ```dart
+/// MultiDropdown<String>(
+///   searchEnabled: true,
+///   searchFilter: (query, items) {
+///     return items.where((i) => i.label.toLowerCase().startsWith(query)).toList();
+///   },
+/// )
+/// ```
+typedef SearchFilter<T> = List<DropdownItem<T>> Function(
+  String query,
+  List<DropdownItem<T>> items,
+);
 
 /// typedef for the selected item builder.
 typedef SelectedItemBuilder<T> = Widget Function(DropdownItem<T> item);
@@ -91,6 +111,8 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
   ///
   const MultiDropdown({
     required this.items,
+    this.groups,
+    this.groupHeaderDecoration = const GroupHeaderDecoration(),
     this.fieldDecoration = const FieldDecoration(),
     this.dropdownDecoration = const DropdownDecoration(),
     this.searchDecoration = const SearchFieldDecoration(),
@@ -98,6 +120,8 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.dropdownItemDecoration = const DropdownItemDecoration(),
     this.autovalidateMode = AutovalidateMode.disabled,
     this.singleSelect = false,
+    this.showSelectAll = false,
+    this.dropdownMode = DropdownMode.overlay,
     this.itemSeparator,
     this.controller,
     this.validator,
@@ -105,6 +129,7 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.enabled = true,
     this.chipDecoration = const ChipDecoration(),
     this.searchEnabled = false,
+    this.searchFilter,
     this.maxSelections = 0,
     this.selectedItemBuilder,
     this.focusNode,
@@ -140,6 +165,8 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
   /// ```
   const MultiDropdown.future({
     required this.future,
+    this.groups,
+    this.groupHeaderDecoration = const GroupHeaderDecoration(),
     this.fieldDecoration = const FieldDecoration(),
     this.dropdownDecoration = const DropdownDecoration(),
     this.searchDecoration = const SearchFieldDecoration(),
@@ -147,6 +174,8 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.dropdownItemDecoration = const DropdownItemDecoration(),
     this.autovalidateMode = AutovalidateMode.disabled,
     this.singleSelect = false,
+    this.showSelectAll = false,
+    this.dropdownMode = DropdownMode.overlay,
     this.itemSeparator,
     this.controller,
     this.validator,
@@ -154,6 +183,7 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.enabled = true,
     this.chipDecoration = const ChipDecoration(),
     this.searchEnabled = false,
+    this.searchFilter,
     this.maxSelections = 0,
     this.selectedItemBuilder,
     this.focusNode,
@@ -165,7 +195,60 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
         super(key: key);
 
   /// The list of dropdown items.
+  ///
+  /// When [groups] is provided, items from the groups are used instead.
   final List<DropdownItem<T>> items;
+
+  /// Optional grouped items with section headers.
+  ///
+  /// When provided, the dropdown renders items organized under
+  /// labeled section headers. The [items] parameter is ignored when
+  /// groups are provided.
+  ///
+  /// ```dart
+  /// MultiDropdown<String>(
+  ///   items: [], // ignored when groups is set
+  ///   groups: [
+  ///     DropdownGroup(label: 'Fruits', items: [apple, banana]),
+  ///     DropdownGroup(label: 'Vegetables', items: [carrot]),
+  ///   ],
+  /// )
+  /// ```
+  final List<DropdownGroup<T>>? groups;
+
+  /// The decoration for the group section headers.
+  ///
+  /// Only used when [groups] is provided.
+  final GroupHeaderDecoration groupHeaderDecoration;
+
+  /// Whether to show a "Select All / Deselect All" toggle at the top
+  /// of the dropdown items list.
+  ///
+  /// When true, a checkbox row appears above the items that allows
+  /// selecting or deselecting all visible items at once.
+  ///
+  /// Ignored when [singleSelect] is true.
+  ///
+  /// The labels can be customized via [DropdownDecoration.selectAllText]
+  /// and [DropdownDecoration.deselectAllText].
+  ///
+  /// Defaults to false.
+  final bool showSelectAll;
+
+  /// An optional custom search filter function.
+  ///
+  /// When provided, this function is used instead of the default
+  /// label-contains-query filter. Receives the search query and the
+  /// full list of items, and must return the filtered subset.
+  ///
+  /// Useful for fuzzy matching, multi-field search, or any custom logic.
+  final SearchFilter<T>? searchFilter;
+
+  /// Controls how the dropdown items are presented.
+  ///
+  /// Use [DropdownMode.overlay] (default) for a classic inline dropdown.
+  /// Use [DropdownMode.bottomSheet] for a mobile-friendly modal bottom sheet.
+  final DropdownMode dropdownMode;
 
   /// The selection type of the dropdown.
   final bool singleSelect;
@@ -243,6 +326,15 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
 
   final OverlayPortalController _portalController = OverlayPortalController();
 
+  /// Returns the flat list of items — either from groups (flattened)
+  /// or from `widget.items` directly.
+  List<DropdownItem<T>> get _effectiveItems {
+    if (widget.groups != null && widget.groups!.isNotEmpty) {
+      return widget.groups!.expand((g) => g.items).toList();
+    }
+    return widget.items;
+  }
+
   late MultiSelectController<T> _dropdownController =
       widget.controller ?? MultiSelectController<T>();
   final _FutureController _loadingController = _FutureController();
@@ -276,14 +368,15 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
     if (!_dropdownController._initialized) {
       _dropdownController
         .._initialize()
-        ..setItems(widget.items);
+        ..setItems(_effectiveItems);
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _dropdownController
         ..addListener(_controllerListener)
         .._setOnSelectionChange(widget.onSelectionChange)
-        .._setOnSearchChange(widget.onSearchChange);
+        .._setOnSearchChange(widget.onSearchChange)
+        .._setSearchFilter(widget.searchFilter);
 
       // if close on back button is enabled, then add the listener
       _listenBackButton();
@@ -339,11 +432,15 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
     // update the form field state when the controller changes
     _formFieldKey.currentState?.didChange(_dropdownController.selectedItems);
 
-    if (_dropdownController.isOpen) {
-      _portalController.show();
-    } else {
-      _dropdownController._clearSearchQuery();
-      _portalController.hide();
+    // Only manage the overlay portal in overlay mode.
+    // Bottom sheet mode manages its own presentation.
+    if (widget.dropdownMode == DropdownMode.overlay) {
+      if (_dropdownController.isOpen) {
+        _portalController.show();
+      } else {
+        _dropdownController._clearSearchQuery();
+        _portalController.hide();
+      }
     }
   }
 
@@ -437,6 +534,20 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
                         : widget.dropdownDecoration.marginTop,
                   );
 
+            final mediaQuery = MediaQuery.of(context);
+            final viewPadding = mediaQuery.viewPadding;
+            final availableSpace = (showOnTop ? spaceAbove : spaceBelow) -
+                viewPadding.top -
+                viewPadding.bottom -
+                widget.dropdownDecoration.marginTop.abs() -
+                8;
+            final effectiveMaxHeight = math
+                .min(
+                  widget.dropdownDecoration.maxHeight,
+                  math.max(availableSpace, 0),
+                )
+                .toDouble();
+
             final stack = Stack(
               children: [
                 Positioned.fill(
@@ -456,6 +567,7 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
                   child: RepaintBoundary(
                     child: _Dropdown<T>(
                       decoration: widget.dropdownDecoration,
+                      maxHeight: effectiveMaxHeight,
                       onItemTap: _handleDropdownItemTap,
                       width: renderBoxSize.width,
                       items: _dropdownController.items,
@@ -467,7 +579,12 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
                       searchAutofocus: widget.searchAutofocus,
                       maxSelections: widget.maxSelections,
                       singleSelect: widget.singleSelect,
+                      showSelectAll: widget.showSelectAll,
                       onSearchChange: _dropdownController._setSearchQuery,
+                      groups: widget.groups,
+                      groupHeaderDecoration: widget.groupHeaderDecoration,
+                      onSelectAll: _dropdownController.selectAll,
+                      onDeselectAll: _dropdownController.clearAll,
                     ),
                   ),
                 ),
@@ -687,11 +804,14 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
         .toList();
 
     if (remainingCount > 0) {
+      final overflowLabel = chipDecoration.overflowLabelBuilder != null
+          ? chipDecoration.overflowLabelBuilder!(remainingCount)
+          : '+$remainingCount more';
       chips.add(
         Container(
           padding: chipDecoration.padding,
           child: Text(
-            '+$remainingCount more',
+            overflowLabel,
             style: chipDecoration.labelStyle ??
                 TextStyle(
                   fontSize: 12,
@@ -754,16 +874,20 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            option.label,
-            style: chipDecoration.labelStyle?.copyWith(
-                  color: widget.enabled
-                      ? chipDecoration.labelStyle?.color
-                      : theme.disabledColor,
-                ) ??
-                TextStyle(
-                  color: widget.enabled ? null : theme.disabledColor,
-                ),
+          Flexible(
+            child: Text(
+              option.label,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: chipDecoration.labelStyle?.copyWith(
+                    color: widget.enabled
+                        ? chipDecoration.labelStyle?.color
+                        : theme.disabledColor,
+                  ) ??
+                  TextStyle(
+                    color: widget.enabled ? null : theme.disabledColor,
+                  ),
+            ),
           ),
           if (widget.enabled) ...[
             const SizedBox(width: 4),
@@ -821,7 +945,139 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
     // (e.g., TextFormField) before opening the dropdown.
     FocusManager.instance.primaryFocus?.unfocus();
 
+    if (widget.dropdownMode == DropdownMode.bottomSheet) {
+      _showBottomSheet();
+    } else {
+      _dropdownController.openDropdown();
+    }
+  }
+
+  void _showBottomSheet() {
     _dropdownController.openDropdown();
+
+    unawaited(
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (sheetContext) {
+          return DraggableScrollableSheet(
+            maxChildSize: 0.85,
+            expand: false,
+            builder: (_, scrollController) {
+              return ListenableBuilder(
+                listenable: _dropdownController,
+                builder: (ctx, __) {
+                  final theme = Theme.of(ctx);
+                  return Column(
+                    children: [
+                      // Drag handle
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      // Title
+                      if (widget.fieldDecoration.labelText != null)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: 8,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              widget.fieldDecoration.labelText!,
+                              style: theme.textTheme.titleMedium,
+                            ),
+                          ),
+                        ),
+                      // Search
+                      if (widget.searchEnabled)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          child: _SearchField(
+                            decoration: widget.searchDecoration,
+                            onChanged: _dropdownController._setSearchQuery,
+                          ),
+                        ),
+                      // Items list
+                      Expanded(
+                        child: _dropdownController.items.isEmpty
+                            ? Center(
+                                child: Text(
+                                  widget.dropdownDecoration.noItemsFoundText,
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              )
+                            : ListView.separated(
+                                controller: scrollController,
+                                padding:
+                                    widget.dropdownDecoration.listPadding ??
+                                        EdgeInsets.zero,
+                                itemCount: _dropdownController.items.length,
+                                separatorBuilder: (_, __) =>
+                                    widget.itemSeparator ??
+                                    const SizedBox.shrink(),
+                                itemBuilder: (_, index) {
+                                  final item = _dropdownController.items[index];
+                                  if (widget.itemBuilder != null) {
+                                    return widget.itemBuilder!(
+                                      item,
+                                      index,
+                                      () => _handleDropdownItemTap(item),
+                                    );
+                                  }
+                                  return _buildBottomSheetItem(
+                                    item,
+                                    theme,
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          );
+        },
+      ).whenComplete(() {
+        _dropdownController._clearSearchQuery(notify: true);
+        _dropdownController.closeDropdown();
+      }),
+    );
+  }
+
+  Widget _buildBottomSheetItem(DropdownItem<T> item, ThemeData theme) {
+    final selected = item.selected;
+    final disabled = item.disabled;
+
+    return ListTile(
+      title: Text(
+        item.label,
+        style: TextStyle(
+          color: disabled ? theme.disabledColor : null,
+        ),
+      ),
+      trailing: selected
+          ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
+          : null,
+      enabled: !disabled,
+      onTap: () => _handleDropdownItemTap(item),
+    );
   }
 
   void _handleOutsideTap(PointerDownEvent event) {

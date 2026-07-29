@@ -182,10 +182,13 @@ class DropdownDecoration {
     this.elevation = 1,
     this.maxHeight = 400,
     this.marginTop = 0,
+    this.listPadding,
     this.borderRadius = const BorderRadius.all(Radius.circular(12)),
     this.footer,
     this.header,
     this.noItemsFoundText = 'No items found',
+    this.selectAllText = 'Select All',
+    this.deselectAllText = 'Deselect All',
     this.expandDirection = ExpandDirection.auto,
     this.animationDuration = const Duration(milliseconds: 200),
     this.animationCurve = Curves.easeOutCubic,
@@ -207,6 +210,12 @@ class DropdownDecoration {
 
   /// the margin top of the dropdown
   final double marginTop;
+
+  /// Padding around the dropdown items list.
+  ///
+  /// Defaults to [EdgeInsets.zero]. Set this to add custom spacing
+  /// around the items list inside the dropdown.
+  final EdgeInsets? listPadding;
 
   /// The custom footer widget to display at the bottom of the dropdown.
   final Widget? footer;
@@ -233,6 +242,18 @@ class DropdownDecoration {
   ///
   /// Defaults to [Curves.easeOutCubic].
   final Curve animationCurve;
+
+  /// The text label for the "Select All" action.
+  ///
+  /// Shown in the select all toggle when not all items are selected.
+  /// Defaults to `'Select All'`.
+  final String selectAllText;
+
+  /// The text label for the "Deselect All" action.
+  ///
+  /// Shown in the select all toggle when all items are selected.
+  /// Defaults to `'Deselect All'`.
+  final String deselectAllText;
 }
 
 /// Represents the decoration for the dropdown field.
@@ -386,6 +407,7 @@ class ChipDecoration {
     this.borderRadius = const BorderRadius.all(Radius.circular(12)),
     this.wrap = true,
     this.maxDisplayCount,
+    this.overflowLabelBuilder,
   });
 
   /// The icon to display for deleting a chip.
@@ -426,4 +448,63 @@ class ChipDecoration {
   /// shown after the visible chips indicating the remaining count.
   /// If null, all chips are displayed.
   final int? maxDisplayCount;
+
+  /// A builder to customize the overflow label shown when [maxDisplayCount]
+  /// is exceeded.
+  ///
+  /// Receives the number of additional selected items not shown as chips.
+  /// Return a localized string, e.g. `(n) => '+$n más'`.
+  ///
+  /// When null, defaults to `'+N more'`.
+  final String Function(int remaining)? overflowLabelBuilder;
+}
+
+/// Configuration class for customizing the appearance of group headers
+/// in the dropdown when using [MultiDropdown] with grouped items.
+///
+/// ```dart
+/// MultiDropdown<String>(
+///   groups: myGroups,
+///   groupHeaderDecoration: GroupHeaderDecoration(
+///     textStyle: TextStyle(fontWeight: FontWeight.bold),
+///     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+///   ),
+/// )
+/// ```
+class GroupHeaderDecoration {
+  /// Creates a new instance of [GroupHeaderDecoration].
+  ///
+  /// [textStyle] is the text style of the group header label.
+  ///
+  /// [padding] is the padding around the group header.
+  ///
+  /// [backgroundColor] is the background color of the group header.
+  ///
+  /// [showDivider] controls whether a divider is shown above
+  /// each group header (except the first).
+  const GroupHeaderDecoration({
+    this.textStyle,
+    this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    this.backgroundColor,
+    this.showDivider = true,
+  });
+
+  /// The text style of the group header label.
+  ///
+  /// When null, defaults to [TextTheme.labelLarge] with
+  /// [ColorScheme.onSurfaceVariant] color.
+  final TextStyle? textStyle;
+
+  /// The padding around the group header content.
+  final EdgeInsets padding;
+
+  /// The background color of the group header.
+  ///
+  /// When null, uses the dropdown background color.
+  final Color? backgroundColor;
+
+  /// Whether to show a divider above each group header (except the first).
+  ///
+  /// Defaults to true.
+  final bool showDivider;
 }

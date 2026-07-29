@@ -32,6 +32,10 @@ A powerful and highly customizable multi-select dropdown widget for Flutter. Sup
 - ✅ Expand direction control (`auto`, `up`, `down`)
 - ✅ Close on back button support
 - ✅ Full `InputDecoration` override for form consistency
+- ✅ Grouped items with customizable section headers
+- ✅ Select All / Deselect All toggle with customizable labels
+- ✅ Custom search filter for fuzzy matching and multi-field search
+- ✅ Bottom sheet mode for mobile-friendly item selection
 
 ## Installation
 
@@ -39,7 +43,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  multi_dropdown: ^3.1.0
+  multi_dropdown: ^3.2.1
 ```
 
 ## Quick Start
@@ -302,4 +306,4 @@ Key changes:
 
 ## License
 
-[MIT License](LICENSE)
+[GPL-3.0 License](LICENSE)
