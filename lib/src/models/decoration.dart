@@ -362,6 +362,9 @@ class FieldDecoration {
   /// Whether to show a clear/deselect icon when items are selected.
   final bool showClearIcon;
 
+  /// The tooltip text to display over the clear icon.
+  final String? clearTooltipText;
+
   /// The text style of the selected item in single-select mode.
   ///
   /// This style is applied to the selected item text displayed in the field

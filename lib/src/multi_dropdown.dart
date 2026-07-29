@@ -136,9 +136,8 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.onSelectionChange,
     this.onSearchChange,
     this.closeOnBackButton = false,
-    Key? key,
-  })  : future = null,
-        super(key: key);
+    super.key,
+  }) : future = null;
 
   /// Creates a multiselect dropdown widget with future request.
   ///
@@ -712,7 +711,7 @@ class _MultiDropdownState<T extends Object> extends State<MultiDropdown<T>> {
         widget.enabled &&
         _dropdownController.selectedItems.isNotEmpty) {
       return Tooltip(
-        message: 'Clear selection',
+        message: widget.fieldDecoration.clearTooltipText ?? 'Clear selection',
         child: Semantics(
           label: 'Clear all selections',
           button: true,
