@@ -189,9 +189,8 @@ class MultiDropdown<T extends Object> extends StatefulWidget {
     this.onSelectionChange,
     this.onSearchChange,
     this.closeOnBackButton = false,
-    Key? key,
-  })  : items = const [],
-        super(key: key);
+    super.key,
+  }) : items = const [];
 
   /// The list of dropdown items.
   ///

@@ -296,6 +296,8 @@ class FieldDecoration {
   ///
   /// [padding] is the padding around the dropdown field.
   ///
+  /// [clearTooltipText] is a tooltip override for the clear icon.
+  ///
   /// [backgroundColor] is the background color of the dropdown field.
   const FieldDecoration({
     this.labelText,
@@ -313,6 +315,7 @@ class FieldDecoration {
     this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     this.backgroundColor,
     this.showClearIcon = true,
+    this.clearTooltipText,
     this.selectedItemTextStyle,
     this.inputDecoration,
   });
